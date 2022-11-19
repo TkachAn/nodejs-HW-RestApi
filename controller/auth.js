@@ -1,3 +1,6 @@
+const path = require("path");
+const fs = require("fs").promises;
+const Jimp = require("jimp");
 const {customError} = require("../helpers/error");
 const {User} = require("../models/user");
 const {
@@ -6,6 +9,7 @@ const {
   singOut,
   currentUser,
   changeSub,
+  updateUserAvatar,
 } = require("../services/auth");
 
 const singUpCtrl = async (req, res) => {
@@ -81,10 +85,35 @@ const subscriptCtrl = async (req, res, next) => {
   res.status(200).json({subscription: newSubscription});
 };
 
+const avatarsDir = path.join(__dirname, "../", "public", "avatars");
+
+const avatarCtrl = async (req, res) => {
+  const {_id: id} = req.user;
+  const {path: tmpUpload, originalname} = req.file;
+  try {
+    const resultUpload = path.join(avatarsDir, `${id}.${originalname}`);
+    await Jimp.read(tmpUpload)
+      .then((img) => {
+        return img.resize(255, 255).writeAsync(tmpUpload);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+
+    await fs.rename(tmpUpload, resultUpload);
+    const avatarURL = path.join("public", "avatars", `${id}.${originalname}`);
+    const data = await updateUserAvatar(id, avatarURL);
+    res.json(data);
+  } catch (error) {
+    await fs.unlink(tmpUpload);
+    throw error;
+  }
+};
 module.exports = {
   singUpCtrl,
   singInCtrl,
   singOutCtrl,
   currentUserCtrl,
   subscriptCtrl,
+  avatarCtrl,
 };
