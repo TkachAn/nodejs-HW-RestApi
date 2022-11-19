@@ -78,11 +78,25 @@ const changeSub = async (subscription, _id) => {
 
   return results.subscription;
 };
-
+const updateUserAvatar = async (id, avatarURL) => {
+  const user = await User.findByIdAndUpdate(
+    id,
+    {avatarURL},
+    {
+      new: true,
+    }
+  );
+  return {
+    user: {
+      avatarURL: user.avatarURL,
+    },
+  };
+};
 module.exports = {
   singUp,
   singIn,
   singOut,
   currentUser,
   changeSub,
+  updateUserAvatar,
 };
