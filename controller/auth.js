@@ -9,7 +9,7 @@ const {
   singOut,
   currentUser,
   changeSub,
-  updateUserAvatar,
+  updateAvatar,
 } = require("../services/auth");
 
 const singUpCtrl = async (req, res) => {
@@ -102,7 +102,7 @@ const avatarCtrl = async (req, res) => {
 
     await fs.rename(tmpUpload, resultUpload);
     const avatarURL = path.join("public", "avatars", `${id}.${originalname}`);
-    const data = await updateUserAvatar(id, avatarURL);
+    const data = await updateAvatar(id, avatarURL);
     res.json(data);
   } catch (error) {
     await fs.unlink(tmpUpload);
