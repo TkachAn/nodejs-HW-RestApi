@@ -6,6 +6,8 @@ const {
   currentUserCtrl,
   subscriptCtrl,
   avatarCtrl,
+  verifyUserCtrl,
+  verifyEmailCtrl,
 } = require("../../controller/auth");
 
 const {checkToken} = require("../../middleWare/auth");
@@ -18,6 +20,8 @@ const router = express.Router();
 
 router.patch("/avatars", checkToken, upload.single("avatar"), avatarCtrl);
 router.get("/current", checkToken, wrapper(currentUserCtrl));
+router.get("/verify/:verificationToken", verifyUserCtrl);
+router.post("/verify", verifyEmailCtrl);
 router.post("/singup", validatorBody(schemaPost), wrapper(singUpCtrl));
 router.post("/login", validatorBody(schemaPost), wrapper(singInCtrl));
 router.get("/logout", checkToken, wrapper(singOutCtrl));
