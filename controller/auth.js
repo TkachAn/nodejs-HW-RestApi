@@ -1,6 +1,8 @@
 const path = require("path");
 const fs = require("fs").promises;
 const Jimp = require("jimp");
+const {nanoid} = require("nanoid");
+const {SING_UP_EMAIL} = require("../config");
 const {customError} = require("../helpers/error");
 const {User} = require("../models/user");
 const {
@@ -10,20 +12,35 @@ const {
   currentUser,
   changeSub,
   updateAvatar,
+  verifyUser,
+  verifyEmail,
 } = require("../services/auth");
+const sgMail = require("@sendgrid/mail");
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const singUpCtrl = async (req, res) => {
+  const verificationToken = nanoid();
   const {email, password, subscription} = req.body;
-  await singUp(email, password, subscription);
-  res.json({
-    status: "success",
-    code: 201,
-    data: {
-      email: email,
-      subscription: subscription,
-      message: "Registration successful",
-    },
-  });
+  await singUp(email, password, verificationToken, subscription);
+  const msg = {
+    to: email,
+    from: SING_UP_EMAIL,
+    subject: "Verification email",
+    text: `Please, verify your email following this link http://localhost:3000/api/users/verify/${verificationToken}`,
+    html: `<h2>Please, <a href='http://localhost:3000/api/users/verify/${verificationToken}'>verify</a> your email</h2>`,
+  };
+
+  await sgMail.send(msg);
+
+  // res.json({
+  //   status: "success",
+  //   code: 201,
+  //   data: {
+  //     email: email,
+  //     subscription: subscription,
+  //     message: "Registration successful",
+  //   },
+  // });
 };
 
 const singInCtrl = async (req, res) => {
@@ -66,11 +83,8 @@ const currentUserCtrl = async (req, res, next) => {
   const id = String(req.user._id);
   User.findById(id);
   res.json({
-    // token: user.token,
-    // email: user.email,
     status: "success",
     code: 200,
-    // data: {email, subscription},
   });
 };
 
@@ -83,6 +97,26 @@ const subscriptCtrl = async (req, res, next) => {
   if (!newSubscription) throw customError({status: 400, message: "error"});
 
   res.status(200).json({subscription: newSubscription});
+};
+const verifyUserCtrl = async (req, res) => {
+
+    const {verificationToken} = req.params;
+    await verifyUser(verificationToken);
+    res.status(200).json({message: "Verification successful"});
+
+};
+
+const verifyEmailCtrl = async (req, res) => {
+  const {email} = req.body;
+  if (!email) {
+    res.status(400).json({message: "missing required field email"});
+  }
+  const user = await verifyEmail(email);
+  if (user) {
+    res.status(200).json({message: "Verification email sent"});
+  } else {
+    res.status(400).json({message: "Verification has already been passed"});
+  }
 };
 
 const avatarsDir = path.join(__dirname, "../", "public", "avatars");
@@ -116,4 +150,6 @@ module.exports = {
   currentUserCtrl,
   subscriptCtrl,
   avatarCtrl,
+  verifyUserCtrl,
+  verifyEmailCtrl,
 };
