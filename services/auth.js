@@ -1,8 +1,10 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const {Conflict, Unauthorized} = require("http-errors");
-const {SECRET} = require("../config");
+const {SECRET, PORT, SING_UP_EMAIL} = require("../config");
 const {User} = require("../models/user");
+const sgMail = require("@sendgrid/mail");
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const singUp = async (email, password, subscription) => {
   const user = await User.findOne({email});
@@ -92,6 +94,33 @@ const updateAvatar = async (id, avatarURL) => {
     },
   };
 };
+const verifyUser = async (Token) => {
+  const user = await User.findOne({Token});
+  if (!user) {
+    throw new NotFound("User not found");
+  }
+  await User.findByIdAndUpdate(user._id, {
+    Token: null,
+    verify: true,
+  });
+};
+
+const verifyEmail = async (email) => {
+  const user = await User.findOne({email, verify: false});
+  if (user) {
+    const msg = {
+      to: email,
+      from: SING_UP_EMAIL,
+      subject: "Verification email again",
+      text: `Please, click this link http://localhost:${PORT}/api/users/verify/${user.Token}`,
+      html: `<h2>Please, <a href='http://localhost:${PORT}/api/users/verify/${user.Token}'>verify</a> your email</h2>`,
+    };
+
+    await sgMail.send(msg);
+  }
+  return user;
+};
+
 module.exports = {
   singUp,
   singIn,
@@ -99,4 +128,6 @@ module.exports = {
   currentUser,
   changeSub,
   updateAvatar,
+  verifyUser,
+  verifyEmail,
 };
